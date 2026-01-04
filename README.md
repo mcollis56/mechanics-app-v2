@@ -1,3 +1,5 @@
+## Euro Motor Works Trial v1.0
+
 # Mechanic Shop Management App
 
 A comprehensive mechanic shop management application built with Vue 3, Vite, and Supabase. This application helps automotive repair shops manage customers, vehicles, work orders, service history, and invoicing with AI-powered features.
