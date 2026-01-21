@@ -51,19 +51,42 @@ function showSendInvoice(job) {
 async function fetchJobs() {
   loading.value = true;
   errorMsg.value = "";
-  // Use job_cards view which we know works
+  
+  // Query jobs table with joins to get VIN and Engine Code
   const { data, error } = await supabase
-    .from("job_cards")
-    .select("id, status, problem_description, created_at, customer_name, rego, vehicle_make_model")
+    .from("jobs")
+    .select(`
+      id, 
+      status, 
+      problem_description, 
+      created_at,
+      due_date,
+      shop_id,
+      customer_id,
+      vehicle_id,
+      customers (name),
+      vehicles (rego, make, model, vin, engine_code)
+    `)
     .order("created_at", { ascending: true });
 
   if (error) {
     errorMsg.value = error.message;
   } else {
-    // Map rego to vehicle_rego for consistency
-    jobs.value = (data || []).map(job => ({
-      ...job,
-      vehicle_rego: job.rego
+    // Map data to match the expected structure for the board
+    jobs.value = (data || []).map(j => ({
+      id: j.id,
+      status: j.status,
+      problem_description: j.problem_description,
+      created_at: j.created_at,
+      due_date: j.due_date,
+      shop_id: j.shop_id,
+      customer_id: j.customer_id,
+      vehicle_id: j.vehicle_id,
+      customer_name: j.customers?.name || '—',
+      vehicle_rego: j.vehicles?.rego || '—',
+      vehicle_make_model: j.vehicles ? `${j.vehicles.make} ${j.vehicles.model}` : '—',
+      vin: j.vehicles?.vin,
+      engine_code: j.vehicles?.engine_code
     }));
   }
   loading.value = false;
@@ -182,6 +205,12 @@ onMounted(fetchJobs);
             <span>{{ job.customer_name || '—' }}</span> •
             <span>{{ job.vehicle_rego || '—' }}</span> •
             <span>{{ job.vehicle_make_model || '—' }}</span>
+          </div>
+          <!-- VIN and Engine Code Visibility -->
+          <div class="card__sub light" v-if="job.vin || job.engine_code">
+            <span v-if="job.vin">VIN: {{ job.vin }}</span>
+            <span v-if="job.vin && job.engine_code"> • </span>
+            <span v-if="job.engine_code">Eng: {{ job.engine_code }}</span>
           </div>
           <div class="card__sub light">
             {{ new Date(job.created_at).toLocaleString() }}

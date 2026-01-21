@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { supabase } from '../supabaseClient.js';
 
 const props = defineProps({
@@ -18,7 +18,7 @@ const filteredVehicles = ref([]);
 const showNewCustomerForm = ref(false);
 const showNewVehicleForm = ref(false);
 const newCustomer = ref({ name: '', email: '', phone: '' });
-const newVehicle = ref({ make: '', model: '', rego: '', customer_id: null });
+const newVehicle = ref({ make: '', model: '', rego: '', vin: '', engine_code: '', customer_id: null });
 
 const fetchCustomers = async () => {
   const { data } = await supabase.from('customers').select('*');
@@ -58,6 +58,11 @@ watch(() => localJob.value.customer_id, (customerId) => {
 const filterVehiclesByCustomer = (customerId) => {
   filteredVehicles.value = vehicles.value.filter(v => v.customer_id === customerId);
 };
+
+const selectedVehicleDetails = computed(() => {
+  if (!localJob.value.vehicle_id) return null;
+  return vehicles.value.find(v => v.id === localJob.value.vehicle_id);
+});
 
 const handleCustomerChange = (event) => {
   if (event.target.value === 'new') {
@@ -101,7 +106,7 @@ const saveNewVehicle = async () => {
     filterVehiclesByCustomer(localJob.value.customer_id);
     localJob.value.vehicle_id = data.id;
     showNewVehicleForm.value = false;
-    newVehicle.value = { make: '', model: '', rego: '', customer_id: null };
+    newVehicle.value = { make: '', model: '', rego: '', vin: '', engine_code: '', customer_id: null };
   }
 };
 
@@ -114,16 +119,29 @@ const saveJob = async () => {
   }
 
   try {
+    // Sanitize payload to only include valid jobs table columns
+    const payload = {
+      customer_id: localJob.value.customer_id,
+      vehicle_id: localJob.value.vehicle_id,
+      problem_description: localJob.value.problem_description,
+      due_date: localJob.value.due_date,
+      status: localJob.value.status,
+      shop_id: localJob.value.shop_id
+    };
+
+    if (localJob.value.id) {
+      payload.id = localJob.value.id;
+    }
+
     const { data, error } = await supabase
       .from('jobs')
-      .upsert(localJob.value)
+      .upsert(payload)
       .select()
       .single();
 
     if (error) {
       console.error('Error saving job:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      alert(`Error saving job: ${error.message || error.hint || 'Unknown error'}`);
+      alert(`Error saving job: ${error.message || 'Unknown error'}`);
     } else {
       console.log('Job saved successfully:', data);
       emit('jobSaved', data);
@@ -198,6 +216,14 @@ const closeModal = () => {
             </option>
             <option value="new" v-if="localJob.customer_id">+ Add New Vehicle</option>
           </select>
+
+          <!-- Selected Vehicle Details (VIN/Engine) -->
+          <div v-if="selectedVehicleDetails" class="mt-2 p-2 bg-blue-50 rounded border border-blue-100 text-xs text-blue-800">
+            <div class="flex justify-between">
+              <span><strong>VIN:</strong> {{ selectedVehicleDetails.vin || 'N/A' }}</span>
+              <span><strong>Engine:</strong> {{ selectedVehicleDetails.engine_code || 'N/A' }}</span>
+            </div>
+          </div>
         </div>
 
         <!-- New Vehicle Form -->
@@ -206,6 +232,8 @@ const closeModal = () => {
           <input v-model="newVehicle.make" placeholder="Make" class="w-full p-2 border rounded mb-2" required />
           <input v-model="newVehicle.model" placeholder="Model" class="w-full p-2 border rounded mb-2" required />
           <input v-model="newVehicle.rego" placeholder="Registration" class="w-full p-2 border rounded mb-2" required />
+          <input v-model="newVehicle.vin" placeholder="VIN" class="w-full p-2 border rounded mb-2" />
+          <input v-model="newVehicle.engine_code" placeholder="Engine Code" class="w-full p-2 border rounded mb-2" />
           <div class="flex gap-2">
             <button type="button" @click="saveNewVehicle" class="px-3 py-1 bg-green-600 text-white rounded text-sm">
               Save Vehicle

@@ -37,7 +37,7 @@
           :disabled="!selectedCustomer || filteredVehicles.length === 0"
           required
         >
-          <option value="">{{ selectedCustomer ? 'Select a vehicle...' : 'Select a customer first' }}</option>
+          <option value="">{{ selectedCustomer ? (filteredVehicles.length > 0 ? 'Select a vehicle...' : 'No vehicles found') : 'Select a customer first' }}</option>
           <option v-for="vehicle in filteredVehicles" :key="vehicle.id" :value="vehicle.id">
             {{ vehicle.registration || vehicle.rego }} - {{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year || 'N/A' }})
           </option>
@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '@/supabaseClient.js'
 import { useRouter } from 'vue-router'
 
@@ -145,8 +145,30 @@ const errorMsg = ref('')
 
 // Filter vehicles by selected customer
 const filteredVehicles = computed(() => {
-  if (!selectedCustomer.value) return []
-  return vehicles.value.filter(v => v.customer_id === selectedCustomer.value)
+  return vehicles.value
+})
+
+// Watch for customer changes to fetch their vehicles
+watch(selectedCustomer, async (newCustomerId) => {
+  selectedVehicle.value = ''
+  if (!newCustomerId) {
+    vehicles.value = []
+    return
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .select('*')
+      .eq('customer_id', newCustomerId)
+      .order('rego', { ascending: true })
+    
+    if (error) throw error
+    vehicles.value = data || []
+  } catch (err) {
+    console.error('Error fetching vehicles for customer:', err)
+    errorMsg.value = 'Failed to load vehicles for the selected customer.'
+  }
 })
 
 const onCustomerChange = () => {
@@ -161,15 +183,6 @@ const fetchCustomers = async () => {
     .order('name', { ascending: true })
   if (!error) {
     customers.value = data || []
-  }
-}
-
-const fetchVehicles = async () => {
-  const { data, error } = await supabase
-    .from('vehicles')
-    .select('*')
-  if (!error) {
-    vehicles.value = data || []
   }
 }
 
@@ -214,6 +227,5 @@ const createWorkOrder = async () => {
 
 onMounted(() => {
   fetchCustomers()
-  fetchVehicles()
 })
 </script>
