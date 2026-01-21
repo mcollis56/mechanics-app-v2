@@ -7,6 +7,7 @@ const route = useRoute();
 const router = useRouter();
 const appName = import.meta.env.VITE_APP_NAME || 'Mechanic App';
 const currentUser = ref(null);
+const isLoadingProfile = ref(true);
 
 // Search State
 const searchQuery = ref('');
@@ -18,18 +19,35 @@ let debounceTimer = null;
 
 const fetchCurrentUser = async () => {
   try {
+    isLoadingProfile.value = true;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    
+    if (!user) {
+      currentUser.value = null;
+      return;
+    }
 
-    const { data: profile } = await supabase
+    // Set initial fallback data from auth session immediately
+    // so we don't show "Loading..." if the profile fetch is slow or missing
+    currentUser.value = {
+      email: user.email,
+      role: 'mechanic'
+    };
+
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
 
-    currentUser.value = profile;
+    // Only update if we successfully got a profile row
+    if (profile && !profileError) {
+      currentUser.value = profile;
+    }
   } catch (err) {
     console.error('Error fetching current user:', err);
+  } finally {
+    isLoadingProfile.value = false;
   }
 };
 
@@ -272,14 +290,14 @@ onUnmounted(() => {
         <div class="flex items-center justify-between">
           <div class="flex items-center flex-1 min-w-0">
             <div class="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-              {{ currentUser?.email?.[0]?.toUpperCase() || 'U' }}
+              {{ currentUser?.email?.[0]?.toUpperCase() || (isLoadingProfile ? '?' : 'U') }}
             </div>
             <div class="ml-3 flex-1 min-w-0">
               <p class="text-sm font-medium text-gray-700 truncate">
-                {{ currentUser?.email || 'Loading...' }}
+                {{ currentUser?.email || (isLoadingProfile ? 'Loading...' : 'Not logged in') }}
               </p>
               <p class="text-xs text-gray-500 capitalize">
-                {{ currentUser?.role || 'mechanic' }}
+                {{ currentUser?.role || (isLoadingProfile ? '...' : 'mechanic') }}
               </p>
             </div>
           </div>
