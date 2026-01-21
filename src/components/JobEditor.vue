@@ -113,13 +113,47 @@ const saveNewVehicle = async () => {
 const saveJob = async () => {
   console.log('Saving job:', localJob.value);
 
-  if (!localJob.value.customer_id || !localJob.value.vehicle_id) {
-    alert('Please select a customer and vehicle');
-    return;
-  }
-
   try {
-    // Sanitize payload to only include valid jobs table columns
+    // 1. If new customer form is open, save it first
+    if (showNewCustomerForm.value) {
+      const { data: custData, error: custError } = await supabase
+        .from('customers')
+        .insert(newCustomer.value)
+        .select()
+        .single();
+
+      if (custError) throw custError;
+      localJob.value.customer_id = custData.id;
+      showNewCustomerForm.value = false;
+      await fetchCustomers();
+      newCustomer.value = { name: '', email: '', phone: '' };
+    }
+
+    // 2. If new vehicle form is open, save it first
+    if (showNewVehicleForm.value) {
+      // Ensure we have the customer ID (might have just been created above)
+      newVehicle.value.customer_id = localJob.value.customer_id;
+      
+      const { data: vehData, error: vehError } = await supabase
+        .from('vehicles')
+        .insert(newVehicle.value)
+        .select()
+        .single();
+
+      if (vehError) throw vehError;
+      localJob.value.vehicle_id = vehData.id;
+      showNewVehicleForm.value = false;
+      await fetchVehicles();
+      newVehicle.value = { make: '', model: '', rego: '', vin: '', engine_code: '', customer_id: null };
+    }
+
+    // 3. Validation check (now that we've tried to create new records)
+    if (!localJob.value.customer_id || !localJob.value.vehicle_id) {
+      alert('Please select a customer and vehicle');
+      return;
+    }
+
+    // 4. Sanitize payload to only include valid jobs table columns
     const payload = {
       customer_id: localJob.value.customer_id,
       vehicle_id: localJob.value.vehicle_id,
@@ -207,14 +241,14 @@ const closeModal = () => {
             id="vehicle"
             v-model="localJob.vehicle_id"
             @change="handleVehicleChange"
-            :disabled="!localJob.customer_id"
+            :disabled="!localJob.customer_id && !showNewCustomerForm"
             class="mt-1 block w-full p-2 border border-gray-300 rounded-md"
           >
             <option :value="null">Select a vehicle...</option>
             <option v-for="vehicle in filteredVehicles" :key="vehicle.id" :value="vehicle.id">
               {{ vehicle.make }} {{ vehicle.model }} - {{ vehicle.rego }}
             </option>
-            <option value="new" v-if="localJob.customer_id">+ Add New Vehicle</option>
+            <option value="new" v-if="localJob.customer_id || showNewCustomerForm">+ Add New Vehicle</option>
           </select>
 
           <!-- Selected Vehicle Details (VIN/Engine) -->
