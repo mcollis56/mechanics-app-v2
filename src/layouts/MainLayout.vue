@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { supabase } from '../supabaseClient.js';
 
@@ -7,6 +7,14 @@ const route = useRoute();
 const router = useRouter();
 const appName = import.meta.env.VITE_APP_NAME || 'Mechanic App';
 const currentUser = ref(null);
+
+// Search State
+const searchQuery = ref('');
+const isSearching = ref(false);
+const showDropdown = ref(false);
+const searchResults = ref({ customers: [], vehicles: [] });
+const searchContainer = ref(null);
+let debounceTimer = null;
 
 const fetchCurrentUser = async () => {
   try {
@@ -36,7 +44,84 @@ const handleLogout = async () => {
   }
 };
 
-onMounted(fetchCurrentUser);
+// Search Logic
+const performSearch = async () => {
+  const query = searchQuery.value.trim();
+  if (query.length < 2) {
+    searchResults.value = { customers: [], vehicles: [] };
+    return;
+  }
+
+  isSearching.value = true;
+  showDropdown.value = true;
+
+  try {
+    // Search Customers
+    const customerQuery = supabase
+      .from('customers')
+      .select('id, first_name, last_name, phone, email')
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,phone.ilike.%${query}%,email.ilike.%${query}%`)
+      .limit(5);
+
+    // Search Vehicles
+    const vehicleQuery = supabase
+      .from('vehicles')
+      .select('id, customer_id, rego, vin, make, model')
+      .or(`rego.ilike.%${query}%,vin.ilike.%${query}%,make.ilike.%${query}%,model.ilike.%${query}%`)
+      .limit(5);
+
+    const [customersRes, vehiclesRes] = await Promise.all([customerQuery, vehicleQuery]);
+
+    searchResults.value = {
+      customers: customersRes.data || [],
+      vehicles: vehiclesRes.data || []
+    };
+  } catch (err) {
+    console.error('Global search error:', err);
+  } finally {
+    isSearching.value = false;
+  }
+};
+
+const handleSearchInput = () => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  
+  if (!searchQuery.value.trim()) {
+    showDropdown.value = false;
+    searchResults.value = { customers: [], vehicles: [] };
+    return;
+  }
+
+  debounceTimer = setTimeout(performSearch, 300);
+};
+
+const navigateToResult = (type, item) => {
+  if (type === 'customer') {
+    router.push(`/customers/${item.id}`);
+  } else if (type === 'vehicle') {
+    router.push(`/customers/${item.customer_id}`);
+  }
+  
+  // Reset search
+  searchQuery.value = '';
+  showDropdown.value = false;
+  searchResults.value = { customers: [], vehicles: [] };
+};
+
+const handleClickOutside = (event) => {
+  if (searchContainer.value && !searchContainer.value.contains(event.target)) {
+    showDropdown.value = false;
+  }
+};
+
+onMounted(() => {
+  fetchCurrentUser();
+  window.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -212,8 +297,98 @@ onMounted(fetchCurrentUser);
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 overflow-auto">
-      <RouterView />
+    <main class="flex-1 flex flex-col overflow-hidden">
+      <!-- Top Header with Global Search -->
+      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-8 flex-shrink-0">
+        <div ref="searchContainer" class="relative w-full max-w-xl">
+          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            v-model="searchQuery"
+            @input="handleSearchInput"
+            @focus="showDropdown = searchQuery.length >= 2"
+            type="text"
+            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            placeholder="Search customers, rego, VIN..."
+          >
+
+          <!-- Search Results Dropdown -->
+          <div
+            v-if="showDropdown && (isSearching || searchResults.customers.length > 0 || searchResults.vehicles.length > 0)"
+            class="absolute mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto"
+          >
+            <div v-if="isSearching" class="p-4 text-sm text-gray-500 flex items-center">
+              <svg class="animate-spin h-4 w-4 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Searching...
+            </div>
+
+            <div v-else>
+              <!-- Customers Section -->
+              <div v-if="searchResults.customers.length > 0">
+                <div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Customers
+                </div>
+                <ul class="divide-y divide-gray-100">
+                  <li
+                    v-for="customer in searchResults.customers"
+                    :key="customer.id"
+                    @click="navigateToResult('customer', customer)"
+                    class="px-4 py-3 hover:bg-purple-50 cursor-pointer transition-colors"
+                  >
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ customer.first_name }} {{ customer.last_name }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ customer.phone }} • {{ customer.email }}
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- Vehicles Section -->
+              <div v-if="searchResults.vehicles.length > 0">
+                <div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Vehicles
+                </div>
+                <ul class="divide-y divide-gray-100">
+                  <li
+                    v-for="vehicle in searchResults.vehicles"
+                    :key="vehicle.id"
+                    @click="navigateToResult('vehicle', vehicle)"
+                    class="px-4 py-3 hover:bg-purple-50 cursor-pointer transition-colors"
+                  >
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ vehicle.make }} {{ vehicle.model }} — <span class="text-purple-600">{{ vehicle.rego }}</span>
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      VIN: {{ vehicle.vin }}
+                    </div>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- No Results -->
+              <div
+                v-if="!isSearching && searchResults.customers.length === 0 && searchResults.vehicles.length === 0"
+                class="p-4 text-sm text-gray-500"
+              >
+                No matches found for "{{ searchQuery }}"
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <div class="flex-1 overflow-auto">
+        <RouterView />
+      </div>
     </main>
   </div>
 </template>
