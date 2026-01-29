@@ -8,6 +8,7 @@ const router = useRouter();
 const appName = import.meta.env.VITE_APP_NAME || 'Mechanic App';
 const currentUser = ref(null);
 const isLoadingProfile = ref(true);
+const isSidebarOpen = ref(false);
 
 // Search State
 const searchQuery = ref('');
@@ -143,22 +144,38 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="main-layout flex h-screen bg-gray-50">
+  <div class="main-layout flex h-screen bg-gray-50 relative">
+    <!-- Mobile Sidebar Overlay -->
+    <div
+      v-if="isSidebarOpen"
+      class="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 md:hidden"
+      @click="isSidebarOpen = false"
+    ></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
+    <aside
+      class="bg-white border-r border-gray-200 flex-col fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:relative md:flex"
+      :class="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+    >
       <!-- Logo/Header -->
-      <div class="h-16 flex items-center px-6 border-b border-gray-200">
+      <div class="h-16 flex items-center px-6 border-b border-gray-200 justify-between">
         <h1 class="text-xl font-bold text-gray-900">{{ appName }}</h1>
+        <button class="md:hidden text-gray-500 hover:text-gray-700" @click="isSidebarOpen = false">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       <!-- Navigation -->
-      <nav class="flex-1 px-4 py-6 space-y-2">
+      <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         <RouterLink
           to="/"
           class="flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors"
           :class="route.path === '/'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -172,6 +189,7 @@ onUnmounted(() => {
           :class="route.path.startsWith('/work-orders')
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-5 8l2 2 4-4" />
@@ -185,6 +203,7 @@ onUnmounted(() => {
           :class="route.path === '/calendar'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -198,6 +217,7 @@ onUnmounted(() => {
           :class="route.path === '/customers'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -211,6 +231,7 @@ onUnmounted(() => {
           :class="route.path === '/suppliers'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -224,6 +245,7 @@ onUnmounted(() => {
           :class="route.path === '/inventory'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -237,6 +259,7 @@ onUnmounted(() => {
           :class="route.path === '/invoices'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -250,6 +273,7 @@ onUnmounted(() => {
           :class="route.path === '/archive'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -263,6 +287,7 @@ onUnmounted(() => {
           :class="route.path === '/reports'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -276,6 +301,7 @@ onUnmounted(() => {
           :class="route.path === '/admin'
             ? 'bg-purple-50 text-purple-700'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'"
+          @click="isSidebarOpen = false"
         >
           <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -315,9 +341,19 @@ onUnmounted(() => {
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 flex flex-col overflow-hidden">
+    <main class="flex-1 flex flex-col overflow-hidden w-full">
       <!-- Top Header with Global Search -->
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-8 flex-shrink-0">
+      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-8 flex-shrink-0 gap-4">
+        <!-- Hamburger Menu Button -->
+        <button
+          @click="isSidebarOpen = true"
+          class="md:hidden text-gray-500 hover:text-gray-700"
+        >
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <div ref="searchContainer" class="relative w-full max-w-xl">
           <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +372,7 @@ onUnmounted(() => {
           <!-- Search Results Dropdown -->
           <div
             v-if="showDropdown && (isSearching || searchResults.customers.length > 0 || searchResults.vehicles.length > 0)"
-            class="absolute mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto"
+            class="absolute mt-1 w-full bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto left-0"
           >
             <div v-if="isSearching" class="p-4 text-sm text-gray-500 flex items-center">
               <svg class="animate-spin h-4 w-4 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24">

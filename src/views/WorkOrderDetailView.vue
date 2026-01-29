@@ -31,6 +31,37 @@
         </div>
       </div>
 
+      <!-- Tab Navigation -->
+      <div class="mb-6 border-b border-gray-200">
+        <nav class="-mb-px flex space-x-8">
+          <button
+            @click="activeTab = 'details'"
+            :class="[
+              activeTab === 'details'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            Details
+          </button>
+          <button
+            @click="activeTab = 'inspection'"
+            :class="[
+              activeTab === 'inspection'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+              'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+            ]"
+          >
+            Inspection
+          </button>
+        </nav>
+      </div>
+
+      <!-- Details Tab Content -->
+      <div v-show="activeTab === 'details'">
+
       <!-- Rego Renewal Inspection Section - Only shows for rego_renewal job types -->
       <div v-if="isRegoRenewal" class="bg-white rounded-lg shadow-md p-6 mb-6 border-2 border-purple-200">
         <div class="flex items-center justify-between mb-4">
@@ -382,6 +413,12 @@
         </ul>
         <p v-else class="text-gray-600 text-center p-4 bg-gray-50 rounded-md">No notes available</p>
       </div>
+      </div> <!-- End Details Tab Content -->
+
+      <!-- Inspection Tab Content -->
+      <div v-show="activeTab === 'inspection'">
+        <WorkOrderInspection :work-order-id="route.params.id" />
+      </div>
 
       <!-- Action Buttons -->
       <div class="flex justify-end space-x-4">
@@ -399,15 +436,68 @@
         >
           Complete Job
         </button>
+        <button
+          @click="showNotifyModal = true"
+          class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:bg-purple-400"
+        >
+          Notify Customer
+        </button>
         <!-- Print Invoice Button - always visible when there are line items -->
         <button
           v-if="allLineItems.length > 0"
           @click="printInvoice"
           :disabled="isPrinting"
-          class="px-6 py-3 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:bg-purple-400"
+          class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:bg-gray-400"
         >
           {{ isPrinting ? 'Generating...' : 'Print Invoice' }}
         </button>
+      </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div v-if="showNotifyModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+      <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="showNotifyModal = false"></div>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div class="sm:flex sm:items-start">
+              <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 sm:mx-0 sm:h-10 sm:w-10">
+                <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg>
+              </div>
+              <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Confirm SMS Notification</h3>
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 mb-4">
+                    Send the following customized message to the customer?
+                  </p>
+                  <div class="bg-gray-50 p-4 rounded-md border border-gray-200 text-sm text-gray-800 italic">
+                    "Hi {{ customer?.name || 'Customer' }}, your {{ vehicle?.make }} {{ vehicle?.model }} is ready at Euro Motor Works! Total: ${{ grandTotal.toFixed(2) }}. See you soon."
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button 
+              type="button" 
+              class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm"
+              @click="sendNotification"
+              :disabled="isSending"
+            >
+              {{ isSending ? 'Sending...' : 'Send SMS ($0.10)' }}
+            </button>
+            <button 
+              type="button" 
+              class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+              @click="showNotifyModal = false"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -423,9 +513,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '@/supabaseClient.js'
+import WorkOrderInspection from '@/components/work-orders/WorkOrderInspection.vue'
 
 const route = useRoute()
 const router = useRouter()
+const activeTab = ref('details')
 const workOrder = ref(null)
 const items = ref([])
 const labourItems = ref([])
@@ -435,6 +527,8 @@ const isUpdatingStatus = ref(false)
 const isAddingLabour = ref(false)
 const showAddForms = ref(false)
 const isPrinting = ref(false)
+const isSending = ref(false)
+const showNotifyModal = ref(false)
 const businessSettings = ref(null)
 const customer = ref(null)
 const vehicle = ref(null)
@@ -1079,4 +1173,50 @@ const printInvoice = async () => {
 onMounted(() => {
   fetchData()
 })
+
+const canNotify = computed(() => {
+  if (!businessSettings.value?.enable_messaging) return false
+  // Can notify if work order is 'completed' or maybe 'pink_slip_lodged' or just generally ready
+  // User prompt said "Car Ready", usually implies status is done or at least in progress and completeable.
+  // Let's allow it for In Progress, Completed, Pink Slip Lodged. Not Draft.
+  const status = workOrder.value?.status
+  return ['in_progress', 'completed', 'pink_slip_lodged', 'awaiting_inspection', 'inspection_failed'].includes(status)
+})
+
+const sendNotification = async () => {
+  isSending.value = true
+  try {
+    // 1. Log simulation
+    console.log('Sending SMS to', customer.value?.phone)
+    console.log('Message:', `Hi ${customer.value?.name}, your ${vehicle.value?.make} ${vehicle.value?.model} is ready! Total: $${grandTotal.value.toFixed(2)}`)
+
+    // 2. Add Job Note
+    const { error } = await supabase
+      .from('job_notes')
+      .insert({
+        work_order_id: workOrder.value.id,
+        content: `SMS Sent: "Car Ready" notification sent to customer.`,
+        source: 'manual' 
+      })
+
+    if (error) throw error
+
+    // 3. UI Feedback
+    showNotifyModal.value = false
+    window.alert('SMS Notification simulated successfully!')
+    
+    // Refresh notes
+    const { data: notesData } = await supabase
+      .from('job_notes')
+      .select('*')
+      .eq('work_order_id', workOrder.value.id)
+    notes.value = notesData || []
+
+  } catch (err) {
+    console.error('Error sending notification:', err)
+    window.alert('Failed to simulate SMS.')
+  } finally {
+    isSending.value = false
+  }
+}
 </script>

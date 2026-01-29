@@ -15,7 +15,8 @@ const formData = ref({
   phone: '',
   email: '',
   hourly_rate: 150.00,
-  tax_rate: 10.00
+  tax_rate: 10.00,
+  enable_messaging: false
 });
 
 const fetchSettings = async () => {
@@ -39,7 +40,8 @@ const fetchSettings = async () => {
         phone: data.phone || '',
         email: data.email || '',
         hourly_rate: parseFloat(data.hourly_rate || 150),
-        tax_rate: parseFloat(data.tax_rate || 10)
+        tax_rate: parseFloat(data.tax_rate || 10),
+        enable_messaging: data.enable_messaging || false
       };
     }
   } catch (err) {
@@ -65,7 +67,8 @@ const saveSettings = async () => {
         phone: formData.value.phone,
         email: formData.value.email,
         hourly_rate: parseFloat(formData.value.hourly_rate),
-        tax_rate: parseFloat(formData.value.tax_rate)
+        tax_rate: parseFloat(formData.value.tax_rate),
+        enable_messaging: formData.value.enable_messaging
       })
       .eq('id', settingsId.value);
 
@@ -231,6 +234,34 @@ onMounted(fetchSettings);
                 required
               />
               <p class="text-xs text-gray-500 mt-1">GST or tax percentage for invoices</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add-ons Section -->
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b">Add-ons & Features</h2>
+          
+          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div>
+              <h3 class="text-base font-medium text-gray-900">Messaging Service</h3>
+              <p class="text-sm text-gray-500">Enable SMS notifications for customers when cars are ready.</p>
+            </div>
+            <div class="flex items-center">
+              <button 
+                type="button" 
+                class="relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                :class="formData.enable_messaging ? 'bg-purple-600' : 'bg-gray-200'"
+                @click="formData.enable_messaging = !formData.enable_messaging"
+              >
+                <span class="sr-only">Use setting</span>
+                <span 
+                  aria-hidden="true" 
+                  class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200"
+                  :class="formData.enable_messaging ? 'translate-x-5' : 'translate-x-0'"
+                ></span>
+              </button>
+              <span class="ml-3 text-sm font-medium text-gray-900">{{ formData.enable_messaging ? 'Enabled' : 'Disabled' }}</span>
             </div>
           </div>
         </div>

@@ -32,7 +32,7 @@ const fetchCurrentUser = async () => {
     return true;
   } catch (err) {
     console.error('Error fetching current user:', err);
-    router.push('/');
+    errorMsg.value = `Failed to load user profile: ${err.message}`;
     return false;
   }
 };
